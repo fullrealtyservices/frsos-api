@@ -1,1151 +1,589 @@
 openapi: 3.1.0
+
 info:
   title: FRS OS API
   version: 1.0.0
   description: |
-    Canonical OpenAPI spec for the Hub21 agent profile API.
+    The canonical REST API for People (real estate agents, loan originators,
+    staff, leadership) and Places (offices, regions, departments). Sites are a
+    sub-resource owned by a Person or a Place.
 
-    Hub21 is a WordPress + BuddyPress multisite at `https://myhub21.com`. A
-    SQLite-to-prod sync (in the `frs-wp-users` plugin) mirrors data from a
-    local roster into WP `user_meta` + BP `xprofile` fields. The "agent
-    profile" is the unified record of a real estate agent, loan originator,
-    or staff member.
+    Architecture: a Backend-For-Frontend projection over WP `user_meta`, BP
+    `xprofile` data, BP groups, and WP multisite. Mobile apps, LLM agents,
+    and partner integrations call this — they should not call the underlying
+    BuddyPress or WP REST APIs directly.
 
     ## Naming policy
+    - Native WP/BP key when one exists (`description`, `facebook`, `first_name`).
+    - Industry-standard names for the rest (`ltm_sales_volume`, `nmls`, `dre_license`).
+    - No `frs_` prefix anywhere.
+    - Vendor names appear only as link-back metadata (`courted_id`, `modex_id`).
 
-    - Native WP/BP key when one exists (`description`, `facebook`,
-      `first_name`, `nickname`).
-    - Industry-standard names for the rest (`ltm_sales_volume`, `mls_id`,
-      `nmls`, `dre_license`).
-    - No `frs_` prefix on any public field.
-    - Vendor names appear ONLY where they are legitimately link-back
-      metadata (`courted_id`, `modex_id`).
-
-    ## Endpoints
-
-    This spec wraps the existing BuddyPress REST API (`buddypress/v1`
-    namespace, built into BP core) and documents the canonical agent
-    profile schema returned through the `xprofile_fields` projection on
-    member responses.
-
-    ## Sensitive fields
-
-    Fields marked `x-internal: true` (DOB, full phone list, local file
-    paths, raw vendor blobs) must not be exposed in unauthenticated
-    public responses. The `x-category` extension groups fields by
-    functional area for UI rendering and access control.
+    ## Auth
+    - **Read**: present an API key via header `X-FRS-Api-Key` (configured in
+      `wp-config.php`). Admins (capability `read`) get read access without a key.
+    - **Write**: WordPress admin session required (capability `edit_users`).
+      API keys do NOT grant write access.
   contact:
-    name: Hub21 Engineering
-    url: https://myhub21.com
+    name: Full Realty Services
+    url: https://fullrealtyservices.com
   license:
     name: Proprietary
+
 servers:
   - url: https://myhub21.com
     description: Production
+
 tags:
-  - name: Members
-    description: BuddyPress members (agents, loan originators, staff)
-  - name: Groups
-    description: BuddyPress groups (offices, regions, departments, projects)
-  - name: XProfile
-    description: Extended profile field data
-paths:
-  /wp-json/buddypress/v1/members:
-    get:
-      tags:
-        - Members
-      summary: List members
-      description: |
-        Returns a paginated list of BuddyPress members. Supports filtering
-        by `member_type` and by `xprofile` field values.
-      operationId: listMembers
-      parameters:
-        - name: page
-          in: query
-          description: Current page of the collection.
-          required: false
-          schema:
-            type: integer
-            default: 1
-            minimum: 1
-        - name: per_page
-          in: query
-          description: Maximum number of items per page.
-          required: false
-          schema:
-            type: integer
-            default: 10
-            minimum: 1
-            maximum: 100
-        - name: search
-          in: query
-          description: Limit results to those matching a string.
-          required: false
-          schema:
-            type: string
-        - name: type
-          in: query
-          description: |
-            Sort order. One of `newest`, `active`, `popular`, `alphabetical`,
-            `random`, `online`.
-          required: false
-          schema:
-            type: string
-            enum:
-              - newest
-              - active
-              - popular
-              - alphabetical
-              - random
-              - online
-            default: newest
-        - name: user_id
-          in: query
-          description: Limit results to friends of this user.
-          required: false
-          schema:
-            type: integer
-        - name: user_ids
-          in: query
-          description: Pass IDs of users to limit results to those users.
-          required: false
-          schema:
-            type: array
-            items:
-              type: integer
-        - name: include
-          in: query
-          description: Ensure result set includes specific IDs.
-          required: false
-          schema:
-            type: array
-            items:
-              type: integer
-        - name: exclude
-          in: query
-          description: Ensure result set excludes specific IDs.
-          required: false
-          schema:
-            type: array
-            items:
-              type: integer
-        - name: member_type
-          in: query
-          description: |
-            Filter by BuddyPress member type slug. Values registered by
-            `frs-wp-users` plugin.
-          required: false
-          schema:
-            $ref: '#/components/schemas/MemberType'
-        - name: xprofile
-          in: query
-          description: |
-            Include xprofile field data in the response. Pass `1` (or
-            true) to embed `xprofile_fields` on each member.
-          required: false
-          schema:
-            type: integer
-            enum: [0, 1]
-            default: 0
-      responses:
-        '200':
-          description: List of members.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Member'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+  - name: People
+    description: Agents, loan originators, staff.
+  - name: Places
+    description: Offices, regions, departments — BP groups.
+  - name: Sites
+    description: WP multisite blogs owned by a Person or Place.
+  - name: Docs
+    description: Self-served documentation routes (open access).
 
-  /wp-json/buddypress/v1/members/{user_id}:
-    get:
-      tags:
-        - Members
-      summary: Get a single member
-      description: |
-        Returns a single member including avatar URLs, identity fields,
-        and (optionally) the full xprofile field set projected onto the
-        canonical `AgentProfile` shape.
-      operationId: getMember
-      parameters:
-        - name: user_id
-          in: path
-          required: true
-          description: WordPress user ID.
-          schema:
-            type: integer
-        - name: populate_extras
-          in: query
-          required: false
-          description: Whether to fetch extra information about the member.
-          schema:
-            type: boolean
-            default: false
-      responses:
-        '200':
-          description: Member record.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Member'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /wp-json/buddypress/v1/xprofile/data/{field_id}/{user_id}:
-    get:
-      tags:
-        - XProfile
-      summary: Get a single xprofile field value for a user
-      description: |
-        Returns the value of one xprofile field for one user. Used to
-        fetch individual canonical fields (e.g. `ltm_sales_volume`)
-        without retrieving the full profile.
-      operationId: getXProfileFieldData
-      parameters:
-        - name: field_id
-          in: path
-          required: true
-          description: BuddyPress xprofile field ID.
-          schema:
-            type: integer
-        - name: user_id
-          in: path
-          required: true
-          description: WordPress user ID.
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: XProfile field data.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/XProfileFieldData'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /wp-json/buddypress/v1/groups:
-    get:
-      tags:
-        - Groups
-      summary: List groups
-      description: |
-        Returns a list of BuddyPress groups. Supports filtering by
-        `group_type` for offices, regions, departments, and projects.
-      operationId: listGroups
-      parameters:
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 1
-            minimum: 1
-        - name: per_page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 10
-            minimum: 1
-            maximum: 100
-        - name: search
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: type
-          in: query
-          required: false
-          description: Sort order (`newest`, `active`, `popular`, `alphabetical`, `random`).
-          schema:
-            type: string
-            enum:
-              - newest
-              - active
-              - popular
-              - alphabetical
-              - random
-            default: active
-        - name: group_type
-          in: query
-          required: false
-          description: Filter by BuddyPress group type slug.
-          schema:
-            $ref: '#/components/schemas/GroupType'
-        - name: status
-          in: query
-          required: false
-          description: Group visibility status.
-          schema:
-            type: string
-            enum:
-              - public
-              - private
-              - hidden
-        - name: include
-          in: query
-          required: false
-          schema:
-            type: array
-            items:
-              type: integer
-        - name: exclude
-          in: query
-          required: false
-          schema:
-            type: array
-            items:
-              type: integer
-      responses:
-        '200':
-          description: List of groups.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Group'
-
-  /wp-json/buddypress/v1/groups/{group_id}/members:
-    get:
-      tags:
-        - Groups
-        - Members
-      summary: List members of a group
-      description: |
-        Returns the members belonging to a single group. Useful for
-        listing the agents in an office or region.
-      operationId: listGroupMembers
-      parameters:
-        - name: group_id
-          in: path
-          required: true
-          description: BuddyPress group ID.
-          schema:
-            type: integer
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 1
-            minimum: 1
-        - name: per_page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 10
-            minimum: 1
-            maximum: 100
-        - name: roles
-          in: query
-          required: false
-          description: |
-            Filter by group member roles. One or more of `admin`, `mod`,
-            `member`, `banned`.
-          schema:
-            type: array
-            items:
-              type: string
-              enum:
-                - admin
-                - mod
-                - member
-                - banned
-        - name: exclude_admins
-          in: query
-          required: false
-          schema:
-            type: boolean
-            default: true
-        - name: exclude_banned
-          in: query
-          required: false
-          schema:
-            type: boolean
-            default: true
-      responses:
-        '200':
-          description: List of group members.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Member'
-        '404':
-          $ref: '#/components/responses/NotFound'
+security:
+  - apiKey: []
 
 components:
-  responses:
-    BadRequest:
-      description: Invalid request.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    Unauthorized:
-      description: Authentication required or insufficient permissions.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    NotFound:
-      description: Resource not found.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-FRS-Api-Key
+      description: |
+        Static read-only API key. Issued by the site admin via
+        `wp-config.php` constant `FRS_PAPI_API_KEYS` (comma-separated list).
+        Write endpoints require WordPress session auth instead.
 
   schemas:
     Error:
       type: object
       properties:
-        code:
-          type: string
-        message:
-          type: string
+        code: { type: string }
+        message: { type: string }
         data:
           type: object
           properties:
-            status:
-              type: integer
+            status: { type: integer }
 
-    MemberType:
-      type: string
-      description: |
-        BuddyPress member type slug. Registered by `frs-wp-users`
-        plugin (see `BuddyPressBootstrap::register_member_types`).
-      enum:
-        - sales_associate
-        - loan_originator
-        - broker_associate
-        - regional_lead
-        - department_lead
-        - staff
-        - partner
-
-    GroupType:
-      type: string
-      description: |
-        BuddyPress group type slug. Registered by `frs-wp-users`
-        plugin (see `BuddyPressBootstrap::register_group_types`).
-      enum:
-        - region
-        - office
-        - department
-        - project
-
-    AvatarUrls:
+    Avatar:
       type: object
-      description: BuddyPress avatar URLs at standard sizes.
       properties:
-        full:
-          type: string
-          format: uri
-        thumb:
-          type: string
-          format: uri
+        thumb:         { type: string, format: uri }
+        full:          { type: string, format: uri }
+        attachment_id: { type: integer }
 
-    Member:
+    Place:
       type: object
-      description: |
-        BuddyPress member representation. The `xprofile_fields` element
-        is the canonical projection of `AgentProfile` fields when
-        requested via `xprofile=1`.
       properties:
-        id:
-          type: integer
-        name:
-          type: string
-          description: Display name.
-        user_login:
-          type: string
-        link:
-          type: string
-          format: uri
-        member_types:
+        id:            { type: integer }
+        name:          { type: string, example: "Walnut" }
+        slug:          { type: string }
+        type:          { type: string, enum: [office, region, department, project] }
+        parent:
+          oneOf:
+            - type: 'null'
+            - type: object
+              properties:
+                id:   { type: integer }
+                name: { type: string }
+                type: { type: string }
+        description:   { type: string }
+        address:       { type: string }
+        phone:         { type: string }
+        photo_url:     { type: string, format: uri }
+        member_count:  { type: integer }
+        members_url:   { type: string, format: uri }
+        sites:
           type: array
-          items:
-            $ref: '#/components/schemas/MemberType'
-        registered_date:
-          type: string
-          format: date-time
-        registered_since:
-          type: string
-          description: Human-readable relative registration date.
-        avatar_urls:
-          $ref: '#/components/schemas/AvatarUrls'
-        xprofile:
-          type: object
-          description: |
-            Grouped xprofile fields. Keys are field group IDs;
-            values contain field arrays. Populated when `xprofile=1`.
-          additionalProperties: true
-        profile:
-          $ref: '#/components/schemas/AgentProfile'
+          items: { $ref: '#/components/schemas/Site' }
 
-    Group:
+    Site:
       type: object
-      description: BuddyPress group (office, region, department, project).
+      description: A WordPress multisite blog owned by a Person or a Place.
       properties:
-        id:
-          type: integer
-        name:
-          type: string
-        slug:
-          type: string
-        link:
-          type: string
-          format: uri
-        description:
+        id:              { type: integer, description: "blog_id" }
+        name:            { type: string }
+        description:     { type: string }
+        url:             { type: string, format: uri }
+        admin_url:       { type: string, format: uri }
+        kind:            { type: string, enum: [agent, office, region, marketing, dashboard, other] }
+        screenshot_url:  { type: string, format: uri, description: "Static-site screenshot, set via webhook" }
+        rebuild_status:  { type: string, enum: [queued, building, ready, failed] }
+        last_rebuilt_at: { type: string, format: date-time }
+        owner:
           type: object
           properties:
-            raw:
-              type: string
-            rendered:
-              type: string
-        group_type:
-          type: array
-          items:
-            $ref: '#/components/schemas/GroupType'
-        status:
-          type: string
-          enum:
-            - public
-            - private
-            - hidden
-        parent_id:
-          type: integer
-        date_created:
-          type: string
-          format: date-time
-        total_member_count:
-          type: integer
-        admins:
-          type: array
-          items:
-            type: integer
-        avatar_urls:
-          $ref: '#/components/schemas/AvatarUrls'
+            user_id:  { type: integer }
+            group_id: { type: integer }
+        registered:      { type: string, format: date-time }
+        last_updated:    { type: string, format: date-time }
 
-    XProfileFieldData:
-      type: object
-      description: A single xprofile field value for a single user.
-      properties:
-        id:
-          type: integer
-        field_id:
-          type: integer
-        user_id:
-          type: integer
-        value:
-          type: object
-          properties:
-            raw:
-              oneOf:
-                - type: string
-                - type: array
-                  items:
-                    type: string
-            rendered:
-              type: string
-            unserialized:
-              type: array
-              items:
-                type: string
-        last_updated:
-          type: string
-          format: date-time
-
-    AgentProfile:
+    PersonProfile:
       type: object
       description: |
-        Canonical projection of a Hub21 agent profile. Combines WP-native
-        identity, contact methods, BP-native social links, and canonical
-        industry-named fields for credentials, employment, production,
-        and predictive analytics.
-
-        Fields are tagged with `x-category` to group them by functional
-        area, and `x-internal: true` marks fields that must not appear in
-        unauthenticated public responses.
+        Canonical flat shape returned by `/people/{id}` and embedded in
+        list responses. Empty objects/keys are omitted.
       properties:
-        # ---------- Identity (WP-native) ----------
-        id:
-          type: integer
-          description: WordPress user ID.
-          x-category: identity
-        user_login:
-          type: string
-          description: WP login slug.
-          x-category: identity
-        user_nicename:
-          type: string
-          description: URL-safe slug for the user.
-          x-category: identity
-        user_email:
-          type: string
-          format: email
-          x-category: identity
-        display_name:
-          type: string
-          x-category: identity
-        user_registered:
-          type: string
-          format: date-time
-          x-category: identity
-        user_url:
-          type: string
-          format: uri
-          x-category: identity
-        first_name:
-          type: string
-          x-category: identity
-        last_name:
-          type: string
-          x-category: identity
-        middle_name:
-          type: string
-          x-category: identity
-        nickname:
-          type: string
-          x-category: identity
-        description:
-          type: string
-          description: Biographical info (WP-native).
-          x-category: identity
-
-        # ---------- Contact ----------
-        phone_number:
-          type: string
-          description: Primary phone (US-formatted, e.g. `(555) 123-4567`).
-          x-category: contact
-        mobile_number:
-          type: string
-          x-category: contact
-        business_email:
-          type: string
-          format: email
-          x-category: contact
-        emails:
-          type: array
-          description: All known email addresses for this person.
-          items:
-            type: string
-            format: email
-          x-category: contact
-        phones:
-          type: array
-          description: All known phone numbers (raw JSON list).
-          items:
-            type: string
-          x-category: contact
-          x-internal: true
-        date_of_birth:
-          type: string
-          format: date
-          x-category: contact
-          x-internal: true
-
-        # ---------- Social (WP-native contact methods) ----------
-        facebook:
-          type: string
-          x-category: social
-        instagram:
-          type: string
-          x-category: social
-        linkedin:
-          type: string
-          x-category: social
-        twitter:
-          type: string
-          x-category: social
-        youtube:
-          type: string
-          x-category: social
-        tiktok:
-          type: string
-          x-category: social
-        mastodon:
-          type: string
-          x-category: social
-        vimeo:
-          type: string
-          x-category: social
-        pinterest:
-          type: string
-          x-category: social
-
-        # ---------- Address ----------
-        street_address:
-          type: string
-          x-category: identity
-        city:
-          type: string
-          x-category: identity
-        state:
-          type: string
-          description: USPS two-letter state code.
-          x-category: identity
-        zip:
-          type: string
-          x-category: identity
-        city_state:
-          type: string
-          description: Composite `City, ST` convenience field.
-          x-category: identity
-
-        # ---------- Credentials ----------
-        nmls:
-          type: string
-          description: NMLS ID (loan originators).
-          x-category: credentials
-        dre_license:
-          type: string
-          description: California DRE license number.
-          x-category: credentials
-        license_number:
-          type: string
-          x-category: credentials
-        license_state:
-          type: string
-          x-category: credentials
-        license_type:
-          type: string
-          x-category: credentials
-        namb_certifications:
-          type: array
-          items:
-            type: string
-          x-category: credentials
-        nar_designations:
-          type: array
-          items:
-            type: string
-          x-category: credentials
-        mls_id:
-          type: string
-          description: MLS member identifier.
-          x-category: credentials
-
-        # ---------- Employment ----------
-        office:
-          type: string
-          description: Office name. FK to a `office` group via groups endpoints.
-          x-category: employment
-        region:
-          type: string
-          x-category: employment
-        department:
-          type: string
-          x-category: employment
-        brand:
-          type: string
-          x-category: employment
-        job_title:
-          type: string
-          x-category: employment
-        employer_name:
-          type: string
-          x-category: employment
-        employer_nmls:
-          type: string
-          x-category: employment
-        branch_nmls:
-          type: string
-          x-category: employment
-        company_type:
-          type: string
-          x-category: employment
-        time_at_current_employer:
-          type: number
-          format: float
-          description: Years at the current employer.
-          x-category: employment
-        industry_tenure:
-          type: string
-          x-category: employment
-        jobs_last_10yr:
-          type: integer
-          x-category: employment
-
-        # ---------- Regulatory ----------
-        federally_registered:
-          type: boolean
-          x-category: credentials
-        regulators:
-          type: string
-          x-category: credentials
-        licensed_states_count:
-          type: integer
-          x-category: credentials
-
-        # ---------- Member type / BP ----------
-        member_type:
-          allOf:
-            - $ref: '#/components/schemas/MemberType'
-          description: Primary BP member type.
-          x-category: employment
+        id:              { type: integer, description: "wp_user_id" }
+        user_login:      { type: string }
+        user_nicename:   { type: string }
+        user_email:      { type: string, format: email }
+        user_registered: { type: string, format: date-time }
+        user_url:        { type: string, format: uri }
+        display_name:    { type: string }
         member_types:
           type: array
-          description: All assigned BP member types (supports dual-role).
-          items:
-            $ref: '#/components/schemas/MemberType'
-          x-category: employment
-
-        # ---------- RE Production (sales_associate, sourced from Courted) ----------
-        ltm_sales_volume:
-          type: number
-          format: double
-          description: Last twelve months sales volume (USD).
-          x-category: RE_production
-        ltm_closed_transactions:
-          type: integer
-          x-category: RE_production
-        ltm_closed_units:
-          type: integer
-          x-category: RE_production
-        ltm_avg_sale_price:
-          type: number
-          format: double
-          x-category: RE_production
-        ltm_est_gci:
-          type: number
-          format: double
-          description: Estimated gross commission income.
-          x-category: RE_production
-        prev_ltm_sales_volume:
-          type: number
-          format: double
-          x-category: RE_production
-        ltm_sales_volume_change:
-          type: number
-          format: float
-          description: Year-over-year change in LTM sales volume (percentage).
-          x-category: RE_production
-        active_listings:
-          type: integer
-          x-category: RE_production
-        pending_listings:
-          type: integer
-          x-category: RE_production
-        agent_tenure:
-          type: number
-          format: float
-          description: Years active as an agent.
-          x-category: RE_production
-        time_at_current_office:
-          type: number
-          format: float
-          x-category: RE_production
-        office_rank:
-          type: integer
-          x-category: RE_production
-        most_transacted_city:
-          type: string
-          x-category: RE_production
-        transacted_cities:
-          type: array
-          items:
-            type: string
-          x-category: RE_production
-        transacted_zips:
-          type: array
-          items:
-            type: string
-          x-category: RE_production
-        likelihood_to_move:
-          type: string
-          description: Predictive score / band.
-          x-category: predictive
-        future_growth_perc:
-          type: number
-          format: float
-          x-category: predictive
-        sales_volume_prediction:
-          type: string
-          enum:
-            - low
-            - mid
-            - high
-          x-category: predictive
-        agent_type_tags:
-          type: array
-          items:
-            type: string
-          x-category: predictive
-
-        # ---------- LO Production (loan_originator, sourced from Modex) ----------
-        ltm_loan_volume:
-          type: number
-          format: double
-          x-category: LO_production
-        ltm_loan_units:
-          type: integer
-          x-category: LO_production
-        ltm_avg_loan_amount:
-          type: number
-          format: double
-          x-category: LO_production
-        ltm_avg_monthly_volume:
-          type: number
-          format: double
-          x-category: LO_production
-        loan_types:
-          type: array
-          items:
-            type: string
-          x-category: LO_production
-        transaction_types:
-          type: array
-          items:
-            type: string
-          x-category: LO_production
-        property_types:
-          type: array
-          items:
-            type: string
-          x-category: LO_production
-        banked_or_brokered:
-          type: string
-          enum:
-            - banked
-            - brokered
-            - both
-          x-category: LO_production
-        does_reverse_mortgage:
-          type: boolean
-          x-category: LO_production
-        lender_beneficiaries:
-          type: array
-          items:
-            type: string
-          x-category: LO_production
-        ltm_nonqm_volume:
-          type: number
-          format: double
-          x-category: LO_production
-        ltm_nonqm_units:
-          type: integer
-          x-category: LO_production
-        nonqm_loan_types:
-          type: array
-          items:
-            type: string
-          x-category: LO_production
-        nonqm_transaction_types:
-          type: array
-          items:
-            type: string
-          x-category: LO_production
-        nonqm_transacted_cities:
-          type: array
-          items:
-            type: string
-          x-category: LO_production
-        nonqm_lender_beneficiaries:
-          type: array
-          items:
-            type: string
-          x-category: LO_production
-        ltm_population_majority:
-          type: string
-          description: CRA-style demographic — majority population grouping.
-          x-category: LO_production
-        ltm_income_level:
-          type: string
-          x-category: LO_production
-        ltm_distressed_pct:
-          type: number
-          format: float
-          x-category: LO_production
-        ltm_poverty_pct:
-          type: number
-          format: float
-          x-category: LO_production
-        ltm_rural_pct:
-          type: number
-          format: float
-          x-category: LO_production
-        ltm_unemployment_pct:
-          type: number
-          format: float
-          x-category: LO_production
-
-        # ---------- External integrations / profile URLs ----------
-        century21_url:
-          type: string
-          format: uri
-          x-category: employment
-        zillow_url:
-          type: string
-          format: uri
-          x-category: RE_production
-        realtor_url:
-          type: string
-          format: uri
-          x-category: RE_production
-        ylopo_domain:
-          type: string
-          x-category: employment
-        moxi_domain:
-          type: string
-          x-category: employment
-        canva_folder_link:
-          type: string
-          format: uri
-          x-category: employment
-        realsatisfied_vanity:
-          type: string
-          x-category: RE_production
-        arrive_link:
-          type: string
-          format: uri
-          x-category: employment
-        telegram_username:
-          type: string
-          x-category: contact
-        booking_url:
-          type: string
-          format: uri
-          x-category: contact
-        website:
-          type: string
-          format: uri
-          x-category: contact
-        company_website:
-          type: string
-          format: uri
-          x-category: employment
-        other_websites:
-          type: array
-          items:
-            type: string
-            format: uri
-          x-category: contact
-
-        # ---------- Tools / config ----------
-        qr_code_data:
-          type: string
-          description: Encoded data used to render a personal QR code.
-          x-category: employment
-        vcard_settings:
+          items: { type: string, example: "sales_associate" }
+        avatar:       { $ref: '#/components/schemas/Avatar' }
+        name:
           type: object
-          description: Per-user vCard generation preferences.
-          additionalProperties: true
-          x-category: employment
-        custom_links:
+          properties:
+            first:    { type: string }
+            last:     { type: string }
+            middle:   { type: string }
+            nickname: { type: string }
+            display:  { type: string }
+        description: { type: string }
+        contact:
+          type: object
+          properties:
+            phone_number:   { type: string, example: "(951) 555-1212" }
+            mobile_number:  { type: string }
+            business_email: { type: string, format: email }
+            emails:         { type: array, items: { type: string, format: email } }
+            phones:         { type: array, items: { type: string } }
+        address:
+          type: object
+          properties:
+            street_address: { type: string }
+            city:           { type: string }
+            state:          { type: string }
+            zip:            { type: string }
+            city_state:     { type: string }
+        social:
+          type: object
+          description: WP-native contact-method keys
+          properties:
+            facebook:  { type: string }
+            instagram: { type: string }
+            linkedin:  { type: string }
+            twitter:   { type: string }
+            youtube:   { type: string }
+            tiktok:    { type: string }
+            mastodon:  { type: string }
+            vimeo:     { type: string }
+            pinterest: { type: string }
+        credentials:
+          type: object
+          properties:
+            nmls:                 { type: string }
+            dre_license:          { type: string }
+            license_number:       { type: string }
+            license_state:        { type: string }
+            license_type:         { type: string }
+            mls_id:               { type: string }
+            mls_short_name:       { type: string }
+            member_mls_id:        { type: string }
+            namb_certifications:  { type: array, items: { type: string } }
+            nar_designations:     { type: array, items: { type: string } }
+        employment:
+          type: object
+          properties:
+            office:                   { type: string }
+            region:                   { type: string }
+            department:               { type: string }
+            brand:                    { type: string }
+            job_title:                { type: string }
+            employer_name:            { type: string }
+            employer_nmls:            { type: string }
+            company_type:             { type: string }
+            time_at_current_employer: { type: number }
+            industry_tenure:          { type: string }
+            jobs_last_10yr:           { type: integer }
+            company_name:             { type: string }
+            company_website:          { type: string, format: uri }
+            aor_regional_director:    { type: string }
+            aor_regional_advisor:     { type: string }
+        regulatory:
+          type: object
+          properties:
+            federally_registered:  { type: boolean }
+            regulators:            { type: string }
+            licensed_states_count: { type: integer }
+        re_production:
+          type: object
+          description: Populated only for sales_associate. Sourced from MLS/Courted.
+          properties:
+            ltm_sales_volume:        { type: number }
+            ltm_closed_transactions: { type: integer }
+            ltm_closed_units:        { type: integer }
+            ltm_avg_sale_price:      { type: number }
+            ltm_est_gci:             { type: number }
+            ltm_sales_volume_change: { type: number }
+            active_listings:         { type: integer }
+            pending_listings:        { type: integer }
+            agent_tenure:            { type: number }
+            time_at_current_office:  { type: number }
+            office_rank:             { type: integer }
+            most_transacted_city:    { type: string }
+            transacted_cities:       { type: array, items: { type: string } }
+            agent_type_tags:         { type: array, items: { type: string } }
+        lo_production:
+          type: object
+          description: Populated only for loan_originator. Sourced from Modex.
+          properties:
+            ltm_loan_volume:        { type: number }
+            ltm_loan_units:         { type: integer }
+            ltm_avg_loan_amount:    { type: number }
+            ltm_avg_monthly_volume: { type: number }
+            loan_types:             { type: array, items: { type: string } }
+            transaction_types:      { type: array, items: { type: string } }
+            property_types:         { type: array, items: { type: string } }
+            banked_or_brokered:     { type: string }
+            does_reverse_mortgage:  { type: boolean }
+            lender_beneficiaries:   { type: array, items: { type: string } }
+            ltm_nonqm_volume:       { type: number }
+            ltm_nonqm_units:        { type: integer }
+        predictive:
+          type: object
+          properties:
+            likelihood_to_move:           { type: string }
+            future_growth_perc:           { type: string }
+            sales_volume_prediction:      { type: number }
+            sales_volume_prediction_low:  { type: number }
+            sales_volume_prediction_high: { type: number }
+        external_profiles:
+          type: object
+          properties:
+            century21_url: { type: string, format: uri }
+            zillow_url:    { type: string, format: uri }
+            realtor_url:   { type: string, format: uri }
+            ylopo_domain:  { type: string }
+            moxi_domain:   { type: string }
+            website:       { type: string, format: uri }
+        tools:
+          type: object
+          properties:
+            canva_folder_link:    { type: string, format: uri }
+            realsatisfied_vanity: { type: string }
+            arrive_link:          { type: string, format: uri }
+            telegram_username:    { type: string }
+            booking_url:          { type: string, format: uri }
+            qr_code_data:         { type: string }
+            profile_headline:     { type: string }
+        vendor_ids:
+          type: object
+          description: Link-back identifiers to external systems. The ONLY place vendor names appear in this schema.
+          properties:
+            courted_id:    { type: string }
+            modex_id:      { type: string }
+            modex_url:     { type: string, format: uri }
+            modex_score:   { type: integer }
+            twenty_crm_id: { type: string }
+        identity_provider:
+          type: object
+          description: Microsoft / Entra (managed by WPO365 — read-only)
+          properties:
+            aad_object_id:        { type: string, readOnly: true }
+            aad_tenant_id:        { type: string, readOnly: true }
+            user_principal_name:  { type: string, readOnly: true }
+        lifecycle:
+          type: object
+          properties:
+            status:      { type: string }
+            first_login: { type: string, format: date-time }
+            is_active:   { type: boolean }
+            updated_at:  { type: string, format: date-time }
+        places:
           type: array
-          description: Custom links rendered on the public profile.
           items:
             type: object
             properties:
-              label:
-                type: string
-              url:
-                type: string
-                format: uri
-          x-category: employment
-        directory_button_type:
-          type: string
-          x-category: employment
-        profile_theme:
-          type: string
-          x-category: employment
-        profile_visibility:
-          type: string
-          enum:
-            - public
-            - members
-            - private
-          x-category: employment
-        profile_slug:
-          type: string
-          description: Override slug for the public profile URL.
-          x-category: identity
-
-        # ---------- Vendor metadata (link-back identifiers only) ----------
-        courted_id:
-          type: string
-          description: Courted person identifier.
-          x-category: vendor_metadata
-        courted_url:
-          type: string
-          format: uri
-          x-category: vendor_metadata
-        courted_data:
-          type: object
-          description: Raw Courted payload (full blob).
-          additionalProperties: true
-          x-category: vendor_metadata
-          x-internal: true
-        modex_id:
-          type: string
-          x-category: vendor_metadata
-        modex_url:
-          type: string
-          format: uri
-          x-category: vendor_metadata
-        modex_score:
-          type: number
-          format: float
-          x-category: vendor_metadata
-        modex_lists:
+              id:     { type: integer }
+              name:   { type: string }
+              type:   { type: string }
+              parent: { type: string }
+        sites:
           type: array
-          items:
-            type: string
-          x-category: vendor_metadata
-        modex_attributes:
-          type: object
-          additionalProperties: true
-          x-category: vendor_metadata
-          x-internal: true
-        twenty_crm_id:
-          type: string
-          x-category: vendor_metadata
-        twenty_crm_last_sync:
-          type: string
-          format: date-time
-          x-category: vendor_metadata
-        fluentcrm_synced_at:
-          type: string
-          format: date-time
-          x-category: vendor_metadata
+          items: { $ref: '#/components/schemas/Site' }
 
-        # ---------- Microsoft / Entra (managed by WPO365, read-only) ----------
-        aadObjectId:
-          type: string
-          description: Azure AD object ID (managed by WPO365). Read-only.
-          readOnly: true
-          x-category: vendor_metadata
-        aadTenantId:
-          type: string
-          description: Azure AD tenant ID (managed by WPO365). Read-only.
-          readOnly: true
-          x-category: vendor_metadata
-        userPrincipalName:
-          type: string
-          description: Microsoft Entra UPN (managed by WPO365). Read-only.
-          readOnly: true
-          x-category: vendor_metadata
+paths:
+  /wp-json/frs/v1/people:
+    get:
+      tags: [People]
+      summary: List people
+      parameters:
+        - { in: query, name: member_type, schema: { type: string, example: "loan_originator" } }
+        - { in: query, name: office, schema: { type: string } }
+        - { in: query, name: region, schema: { type: string } }
+        - { in: query, name: search, schema: { type: string } }
+        - { in: query, name: page, schema: { type: integer, default: 1 } }
+        - { in: query, name: per_page, schema: { type: integer, default: 20, maximum: 100 } }
+        - { in: query, name: fields, schema: { type: string, description: "CSV of top-level field groups to return" } }
+      responses:
+        '200':
+          description: List of PersonProfile (paginated; total in X-WP-Total header).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PersonProfile' }
+    post:
+      tags: [People]
+      summary: Create a person (admin only)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PersonProfile' }
+      responses:
+        '200':
+          description: Created PersonProfile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonProfile' }
 
-        # ---------- Avatar / headshot ----------
-        headshot_id:
-          type: integer
-          description: WP attachment ID for the headshot image.
-          x-category: identity
-        headshot_url:
-          type: string
-          format: uri
-          x-category: identity
-        headshot_local_path:
-          type: string
-          description: Server-local file path for the headshot.
-          x-category: identity
-          x-internal: true
+  /wp-json/frs/v1/people/me:
+    get:
+      tags: [People]
+      summary: Get authenticated current user
+      security: []
+      responses:
+        '200':
+          description: PersonProfile for the current user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonProfile' }
+    patch:
+      tags: [People]
+      summary: Partial self-update
+      security: []
+      responses:
+        '200':
+          description: Updated PersonProfile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonProfile' }
+
+  /wp-json/frs/v1/people/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    get:
+      tags: [People]
+      summary: Get a person by wp_user_id
+      responses:
+        '200':
+          description: PersonProfile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonProfile' }
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    patch:
+      tags: [People]
+      summary: Partial update (admin)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PersonProfile' }
+      responses:
+        '200':
+          description: Updated PersonProfile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonProfile' }
+
+  /wp-json/frs/v1/people/by-login/{login}:
+    parameters:
+      - { in: path, name: login, required: true, schema: { type: string } }
+    get:
+      tags: [People]
+      summary: Get by user_login or user_nicename
+      responses:
+        '200':
+          description: PersonProfile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonProfile' }
+
+  /wp-json/frs/v1/people/by-nmls/{nmls}:
+    parameters:
+      - { in: path, name: nmls, required: true, schema: { type: string } }
+    get:
+      tags: [People]
+      summary: Get by NMLS id
+      responses:
+        '200':
+          description: PersonProfile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonProfile' }
+
+  /wp-json/frs/v1/places:
+    get:
+      tags: [Places]
+      summary: List places
+      parameters:
+        - { in: query, name: type,   schema: { type: string, enum: [office, region, department, project] } }
+        - { in: query, name: parent, schema: { type: integer } }
+      responses:
+        '200':
+          description: List of Place
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Place' }
+
+  /wp-json/frs/v1/places/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    get:
+      tags: [Places]
+      summary: Get a place
+      responses:
+        '200':
+          description: Place
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Place' }
+    patch:
+      tags: [Places]
+      summary: Update a place (admin)
+      security: []
+      responses:
+        '200':
+          description: Updated Place
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Place' }
+
+  /wp-json/frs/v1/places/{id}/people:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    get:
+      tags: [Places]
+      summary: List people in a place
+      responses:
+        '200':
+          description: PersonProfile list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PersonProfile' }
+
+  /wp-json/frs/v1/people/{id}/sites:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    post:
+      tags: [Sites]
+      summary: Create a multisite blog owned by this person
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:            { type: string }
+                path:            { type: string, description: "Multisite path; defaults to slug of name" }
+                kind:            { type: string, default: agent }
+                rebuild_webhook: { type: string, format: uri }
+      responses:
+        '200':
+          description: Created Site
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Site' }
+
+  /wp-json/frs/v1/places/{id}/sites:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    post:
+      tags: [Sites]
+      summary: Create a multisite blog owned by this place
+      security: []
+      responses:
+        '200':
+          description: Created Site
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Site' }
+
+  /wp-json/frs/v1/sites/{blog_id}:
+    parameters:
+      - { in: path, name: blog_id, required: true, schema: { type: integer } }
+    patch:
+      tags: [Sites]
+      summary: Update site metadata (admin)
+      security: []
+      responses:
+        '200':
+          description: Updated Site
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Site' }
+
+  /wp-json/frs/v1/sites/{blog_id}/rebuild:
+    parameters:
+      - { in: path, name: blog_id, required: true, schema: { type: integer } }
+    post:
+      tags: [Sites]
+      summary: Trigger a static-site rebuild (admin) via the n8n webhook
+      security: []
+      responses:
+        '200':
+          description: Queue status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queued:  { type: boolean }
+                  webhook: { type: string, format: uri }
+                  reason:  { type: string }
+
+  /wp-json/frs/v1/docs:
+    get:
+      tags: [Docs]
+      summary: HTML index of docs
+      security: []
+      responses:
+        '200': { description: HTML }
+
+  /wp-json/frs/v1/openapi.yaml:
+    get:
+      tags: [Docs]
+      summary: This file
+      security: []
+      responses:
+        '200': { description: OpenAPI YAML }
+
+  /wp-json/frs/v1/swagger-ui:
+    get:
+      tags: [Docs]
+      summary: Interactive Swagger UI
+      security: []
+      responses:
+        '200': { description: HTML }
+
+  /wp-json/frs/v1/llms.txt:
+    get:
+      tags: [Docs]
+      summary: LLM-optimized API documentation
+      security: []
+      responses:
+        '200': { description: text/plain }
