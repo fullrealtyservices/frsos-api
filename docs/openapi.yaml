@@ -36,13 +36,31 @@ servers:
 
 tags:
   - name: People
-    description: Agents, loan originators, staff.
+    description: |
+      Every person FRS works with — real estate agents, loan originators,
+      staff, and leadership — has a Person record. The Person is the
+      portable, vendor-neutral profile that powers the directory, mobile
+      apps, partner integrations, and any tool that needs a clean view of
+      who someone is and what they do.
   - name: Places
-    description: Offices, regions, departments — BP groups.
+    description: |
+      The organizational structures a Person belongs to — offices,
+      regions, departments. Places are a relationship, not an attribute:
+      a Person can belong to several at once (for example, an agent in
+      the San Jose office is also part of the Bay Area region).
   - name: Sites
-    description: WP multisite blogs owned by a Person or Place.
+    description: |
+      A Site is the data store, sync layer, and management surface for an
+      automated marketing site. Each Person and each Place can own one or
+      more Sites. The public-facing site is statically built and hosted
+      by the company's automated site-building pipeline; this Site record
+      holds its content, triggers rebuilds via webhook, tracks build
+      status, and stores a screenshot of the latest published version.
   - name: Docs
-    description: Self-served documentation routes (open access).
+    description: |
+      Public discovery and reference for the API itself — the OpenAPI
+      spec, the interactive Swagger UI, the LLM-optimized text guide,
+      and the docs landing page. Open access, no auth required.
 
 security:
   - apiKey: []
@@ -103,7 +121,12 @@ components:
 
     Site:
       type: object
-      description: A WordPress multisite blog owned by a Person or a Place.
+      description: |
+        A Site is the management record for a Person's or Place's automated
+        marketing website. It stores the content and configuration the
+        site-building pipeline uses, exposes a webhook to trigger a rebuild,
+        tracks build status, and holds a screenshot of the latest published
+        version.
       properties:
         id:              { type: integer, description: "blog_id" }
         name:            { type: string }
