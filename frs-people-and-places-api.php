@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       FRS People and Places API
+ * Plugin Name:       FRS OS API
  * Plugin URI:        https://github.com/fullrealtyservices/frs-people-and-places-api
  * Description:       Canonical REST API for FRS People (agents, loan originators, staff) and Places (offices, regions). Backend-For-Frontend projection over WP user_meta + BP xprofile + BP groups. Self-documenting via OpenAPI + Swagger UI + llms.txt.
  * Version:           1.0.0
@@ -52,7 +52,7 @@ register_activation_hook( __FILE__, function ( $network_wide ) {
 	if ( is_multisite() && ! $network_wide ) {
 		deactivate_plugins( plugin_basename( __FILE__ ) );
 		wp_die(
-			esc_html__( 'FRS People and Places API must be Network Activated on multisite. Please activate from the Network Admin → Plugins screen.', 'frs-papi' ),
+			esc_html__( 'FRS OS API must be Network Activated on multisite. Please activate from the Network Admin → Plugins screen.', 'frs-papi' ),
 			esc_html__( 'Plugin activation error', 'frs-papi' ),
 			[ 'back_link' => true ]
 		);

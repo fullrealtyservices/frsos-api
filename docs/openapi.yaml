@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Hub21 Agent Profile API
+  title: FRS OS API
   version: 1.0.0
   description: |
     Canonical OpenAPI spec for the Hub21 agent profile API.

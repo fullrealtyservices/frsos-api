@@ -1,4 +1,4 @@
-# FRS People and Places API
+# FRS OS API
 
 The official REST API for FRS people (real estate agents, loan originators, staff) and places (offices, regions, departments), with sites as a sub-resource owned by people or places. This plugin is a Backend-For-Frontend (BFF) projection that unifies WordPress users, BuddyPress xprofile, BuddyPress groups, and WP multisite blogs into a single, consistent REST surface under the `frs/v1` namespace.
 
@@ -10,7 +10,7 @@ Consumers — mobile apps, LLM agents, marketing sites, internal tooling — cal
 
 1. **Install** — Clone or copy this plugin into `wp-content/plugins/frs-people-and-places-api/`.
 2. **Configure** — Add the constants from `wp-config-sample.php` to your `wp-config.php` (at minimum, define `FRS_PAPI_API_KEYS`).
-3. **Network-activate** — In WP Admin → Network Admin → Plugins, network-activate "FRS People and Places API".
+3. **Network-activate** — In WP Admin → Network Admin → Plugins, network-activate "FRS OS API".
 
 Optionally, copy `mu-plugin-loader/frs-papi-loader.php` into `wp-content/mu-plugins/` to force-load the plugin even if a sub-site admin tries to deactivate it.
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * FRS People and Places API — wp-config.php configuration sample.
+ * FRS OS API — wp-config.php configuration sample.
  *
  * Copy the constants below into your wp-config.php file. They MUST appear
  * BEFORE the line:

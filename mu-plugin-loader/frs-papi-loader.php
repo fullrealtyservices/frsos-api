@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name:  FRS People & Places API — MU Loader
- * Description:  Force-loads the FRS People & Places API plugin regardless of
+ * Plugin Name:  FRS OS API — MU Loader
+ * Description:  Force-loads the FRS OS API plugin regardless of
  *               whether someone has accidentally deactivated it in the network
  *               plugins UI. The API is load-bearing infrastructure; mobile
  *               apps and LLM agents must always be able to reach it.
@@ -31,7 +31,7 @@ if ( file_exists( $frs_papi_main ) ) {
 	add_action( 'admin_notices', function () {
 		if ( current_user_can( 'manage_network' ) ) {
 			echo '<div class="notice notice-error"><p>'
-				. '<strong>FRS People &amp; Places API loader</strong>: the main plugin is missing at '
+				. '<strong>FRS OS API loader</strong>: the main plugin is missing at '
 				. '<code>wp-content/plugins/frs-people-and-places-api/</code>. '
 				. 'Mobile apps, the LLM agent integration, and partner sites cannot reach the API until the plugin is restored.'
 				. '</p></div>';

@@ -60,12 +60,12 @@ class DocsServer {
 
 	public static function serve_index() {
 		$base = rest_url( Bootstrap::NAMESPACE_V1 );
-		$html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>FRS People &amp; Places API — Docs</title>'
+		$html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>FRS OS API — Docs</title>'
 			. '<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:640px;margin:60px auto;padding:0 24px;line-height:1.6;color:#1e293b}'
 			. 'h1{color:#1e3a5f}a{color:#1d4ed8;text-decoration:none}a:hover{text-decoration:underline}'
 			. 'ul{padding-left:24px}code{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:14px}'
 			. '.meta{color:#64748b;font-size:13px;margin-top:48px}</style></head>'
-			. '<body><h1>FRS People &amp; Places API</h1>'
+			. '<body><h1>FRS OS API</h1>'
 			. '<p>The canonical REST API for People (agents, loan originators, staff) and Places (offices, regions).</p>'
 			. '<ul>'
 			. '<li><a href="' . esc_url( $base . '/swagger-ui' ) . '">Interactive Swagger UI</a></li>'
