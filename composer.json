@@ -1,0 +1,39 @@
+{
+    "name": "fullrealtyservices/frs-people-and-places-api",
+    "description": "The official REST API for FRS people (agents, loan originators, staff) and places (offices, regions, departments), with sites as a sub-resource. A Backend-For-Frontend projection over WP user_meta + BP xprofile + BP groups + WP multisite, exposed under the frs/v1 namespace.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "homepage": "https://github.com/fullrealtyservices/frs-people-and-places-api",
+    "keywords": [
+        "wordpress",
+        "wordpress-plugin",
+        "rest-api",
+        "buddypress",
+        "multisite",
+        "bff"
+    ],
+    "support": {
+        "issues": "https://github.com/fullrealtyservices/frs-people-and-places-api/issues",
+        "source": "https://github.com/fullrealtyservices/frs-people-and-places-api"
+    },
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "wp-coding-standards/wpcs": "^3.0",
+        "phpunit/phpunit": "^9.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "FRSPapi\\": "includes/"
+        }
+    },
+    "scripts": {
+        "lint": "find includes -name '*.php' -exec php -l {} \\;"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    }
+}

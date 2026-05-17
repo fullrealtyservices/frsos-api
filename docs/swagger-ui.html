@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hub21 Agent Profile API</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #fafafa;
+    }
+    .topbar {
+      background: #1e3a5f;
+      color: white;
+      padding: 16px 32px;
+      border-bottom: 4px solid #2c5282;
+    }
+    .topbar h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .topbar p {
+      margin: 4px 0 0;
+      opacity: 0.85;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    #swagger-ui {
+      max-width: 1460px;
+      margin: 0 auto;
+    }
+    .footer {
+      text-align: center;
+      padding: 24px;
+      color: #64748b;
+      font-size: 12px;
+      border-top: 1px solid #e2e8f0;
+      margin-top: 32px;
+      background: #fff;
+    }
+    .footer code {
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #334155;
+    }
+    /* Hide the default Swagger UI topbar since we provide our own */
+    .swagger-ui .topbar { display: none; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>Hub21 Agent Profile API</h1>
+    <p>Real estate agent, loan originator, and staff profile data &mdash; BuddyPress REST API with custom xprofile extensions</p>
+  </div>
+  <div id="swagger-ui"></div>
+  <div class="footer">Source: <code>data/openapi.yaml</code> &mdash; regenerate when the API changes</div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js" crossorigin></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js" crossorigin></script>
+  <script>
+    window.addEventListener('load', function () {
+      window.ui = SwaggerUIBundle({
+        url: './openapi.yaml',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        tryItOutEnabled: true,
+        filter: true,
+        displayRequestDuration: true,
+        defaultModelsExpandDepth: 1,
+        defaultModelExpandDepth: 2,
+        docExpansion: 'list',
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset.slice(1) // drop standalone topbar plugin
+        ],
+        layout: 'BaseLayout'
+      });
+    });
+  </script>
+</body>
+</html>

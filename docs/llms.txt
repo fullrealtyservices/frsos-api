@@ -1,0 +1,156 @@
+# Hub21 Agent Profile API
+
+Real estate agent, loan originator, and staff profile data for Century 21 Realty Masters and Full Realty Services. Backed by WordPress + BuddyPress on a multisite at https://myhub21.com. Data flows from a Google Sheet (canonical roster) + Courted (RE production stats) + Modex (LO production stats CSV) + base.frs (legacy) into WP user_meta + BP xprofile fields, then served via BP REST API.
+
+This file is written for LLM agents (Claude, GPT, etc.) that need to query, interpret, or write profile data. It explains naming conventions, available endpoints, member-type taxonomy, and the sync architecture so an agent can safely reason about the system without re-deriving it from scratch.
+
+## Identity and access
+
+- **Who can read**: any authenticated WordPress user via the BuddyPress REST API. Unauthenticated requests receive limited public fields only.
+- **Auth (preferred)**: WordPress Application Passwords. Send `Authorization: Basic <base64(user:appPwd)>` on every request. Issue app passwords from the user's WP profile page or via WP-CLI: `wp user application-password create <user> "agent-name"`.
+- **Auth (browser)**: standard WP login cookies + nonce. Used by in-portal JS.
+- **BP REST base**: `https://myhub21.com/wp-json/buddypress/v1/`
+- **WP REST base**: `https://myhub21.com/wp-json/wp/v2/` (for user_meta passthrough on app-password-authorized clients)
+
+### Member sites in the multisite
+
+- `https://myhub21.com/` — root site, hosts the primary member directory and all `sales_associate`, `staff`, and `commercial_agent` members.
+- `https://myhub21.com/lending/` — sub-site for `loan_originator` members. Same REST schema; cross-network queries should hit the root site, which has the full network user list.
+
+## Field naming policy (read this before writing any code)
+
+Naming follows a strict priority order so client code stays readable and portable:
+
+1. **Native WP/BP keys take precedence.** Use `description` not `bio`; `nickname` not `preferred_name`; `facebook` not `fb_url`. If WordPress core or BuddyPress defines a field, that name wins.
+2. **Industry-standard names for the rest.** `ltm_sales_volume`, `mls_id`, `nmls`, `dre_license`, `license_state`. These match how the broader real-estate/mortgage tooling ecosystem names things.
+3. **No `frs_` prefix anywhere in new code.** Legacy keys like `frs_company_role`, `frs_nmls`, `frs_legacy_uuid` still exist on prod for backwards compatibility and are dual-written by `MetaKeyAlias`. New integrations must read and write the canonical (un-prefixed) name only.
+4. **Vendor names only as link-back metadata.** External system IDs use the `<vendor>_id` form: `courted_id`, `modex_id`, `twenty_crm_id`, `aad_object_id`. These are stored under `ids.*` in the canonical response shape.
+
+## Member type slugs
+
+BuddyPress member types are the primary taxonomy for role/function:
+
+- `sales_associate` — real estate agent (sells residential or commercial property)
+- `loan_originator` — mortgage loan officer (NMLS-licensed, originates loans)
+- `staff` — non-producing org members: admin, marketing, operations, ownership
+- `commercial_agent` — RE agent with commercial specialization tag (often also has `sales_associate`)
+
+A single user can hold **multiple** member types. Assignment uses the BP API:
+
+```
+bp_set_member_type( $user_id, 'sales_associate', true );  // true = append, don't replace
+bp_set_member_type( $user_id, 'commercial_agent', true );
+```
+
+In the SQLite warehouse (`data/agents.db`), the multi-type assignment lives in a JSON list on the `member_types` column. Read it as JSON, not a single string.
+
+## Endpoint cheat sheet
+
+All paths are relative to `https://myhub21.com/wp-json/`.
+
+### Members
+
+- **`GET buddypress/v1/members`** — list members.
+  - Filters: `member_type=sales_associate`, `search=tolu`, `xprofile[<field_id>]=<value>`, `page`, `per_page` (max 100), `include[]=<user_id>`, `exclude[]=<user_id>`.
+  - Response shape: `[{ id, name, user_login, avatar_urls, xprofile: { ... }, member_types: [ ... ], ... }, ...]`
+- **`GET buddypress/v1/members/{id}`** — single member with full xprofile payload.
+- **`GET buddypress/v1/members/me`** — currently authenticated member. Useful for "who am I" checks before mutating profile data.
+
+### xprofile (extended profile fields)
+
+- **`GET buddypress/v1/xprofile/groups`** — field group definitions, organized by category: Personal & Contact, Bio, RE Production, LO Production, Credentials, Employment, Social. Use this to discover field IDs before querying values.
+- **`GET buddypress/v1/xprofile/groups/{group_id}?fetch_fields=true`** — group with its child field definitions, including `id`, `name`, `type`, and `options`.
+- **`GET buddypress/v1/xprofile/data/{field_id}/{user_id}`** — single field value for a single user. Cheapest read when you already know the field ID.
+- **`POST buddypress/v1/xprofile/data/{field_id}/{user_id}`** — write a value (requires the authenticated user to be the profile owner or have `edit_users`). Body: `{ "value": "..." }`.
+
+### Groups (offices and regions)
+
+Offices and regions are BuddyPress groups, distinguished by `group_type`:
+
+- **`GET buddypress/v1/groups?group_type=office`** — list all offices (e.g., Walnut, Diamond Bar, Anaheim Hills).
+- **`GET buddypress/v1/groups?group_type=region`** — list parent regions (e.g., Bay Area, Inland Empire). Each office links to a region via a `parent_id` xprofile field on the group.
+- **`GET buddypress/v1/groups/{id}/members`** — members in a given office or region. Supports `per_page` and `page`.
+
+## Field categories
+
+Fields are grouped semantically. Below are the categories an LLM should understand when reading or writing profile data.
+
+- **Identity** — WP-native user fields: `user_login`, `user_email`, `display_name`, `first_name`, `last_name`, `nickname`, `description` (BP bio), `user_url`. Stored in `wp_users` + `wp_usermeta`.
+- **Contact** — phones, alternate emails, social URLs: `phone`, `mobile`, `business_email`, `facebook`, `instagram`, `linkedin`, `twitter`, `youtube`, `tiktok`.
+- **Credentials** — license and registry info: `nmls`, `dre_license`, `license_state`, `license_type`, `mls_id`.
+- **Employment** — org affiliation: `office`, `region`, `brand` (e.g., "Century 21 Masters"), `job_title`, `department`, `status` (active/inactive/archived).
+- **RE Production** — `sales_associate` only: `ltm_sales_volume`, `ltm_transactions`, `active_listings`, `closed_listings_ytd`. Sourced from Courted.
+- **LO Production** — `loan_originator` only: `ltm_loan_volume`, `ltm_loan_units`, `loans_in_pipeline`. Sourced from Modex CSV.
+- **Vendor metadata** — external service link-backs under `ids.*`: `courted_id`, `modex_id`, `twenty_crm_id`, `aad_object_id` (Entra/Azure AD), `legacy_uuid`, `legacy_id`.
+
+## Sync architecture (data flow)
+
+Understanding the flow prevents accidentally clobbering canonical data.
+
+### Sources
+
+- **Google Sheet** — canonical roster. Single source of truth for who exists, their employment, contact info, and member type assignments. Pulled nightly.
+- **Courted** — RE production stats per agent. Pulled per-agent via Courted API, matched on email or `courted_id`.
+- **Modex CSV** — LO production stats. Bulk import once per cycle, matched on NMLS.
+- **base.frs** — legacy MySQL system. Being retired. Read-only mirror exists for backfill of historical UUIDs.
+
+### Pipeline
+
+1. Sources are normalized into the local SQLite warehouse at `data/agents.db`.
+2. `LocalAggregateSync` (a WP-CLI command, lives in `frs-wp-users` plugin) pushes SQLite rows to WordPress production. **Append-only** — it never overwrites identity fields on users that have an `aadObjectId` (those are Entra-managed).
+3. On the WordPress side, `MetaKeyAlias` dual-writes canonical keys to their legacy `frs_*` counterparts so old plugins keep working without modification.
+4. `BuddyPressXProfileSchema` auto-mirrors `user_meta` to BP `xprofile` fields bidirectionally, with a re-entry guard to prevent infinite loops. This is what makes a `user_meta` write visible via the BP REST API.
+
+### Diagram
+
+```
+Google Sheet  ─┐
+Courted API   ─┤──► SQLite (agents.db) ──[LocalAggregateSync WP-CLI]──► WP prod
+Modex CSV     ─┤                                                          │
+base.frs      ─┘                                                          ▼
+                                                              user_meta ◄─► xprofile
+                                                                          via BuddyPressXProfileSchema
+                                                                          + MetaKeyAlias (legacy mirror)
+                                                                          │
+                                                                          ▼
+                                                                    BP REST API
+```
+
+## Things NOT to do (LLM guardrails)
+
+These are the most common mistakes when an agent first works with this system. Avoid them.
+
+- **Don't write to user_meta keys with the `frs_` prefix.** Write to the canonical name. The `MetaKeyAlias` hook handles the legacy mirror for you. Writing both sides yourself causes race conditions and double-writes.
+- **Don't overwrite identity fields (`user_email`, `display_name`, `first_name`, `last_name`) on users with `aadObjectId` set.** Those users are Microsoft Entra-managed; their identity must round-trip from Azure AD. Sync code already skips them — manual writes must too.
+- **Don't set `frs_company_role`.** It's a dead cache of `bp_member_type` left over from a prior refactor. Use `bp_get_member_type( $user_id )` to read role, and `bp_set_member_type()` to write. The cache column was dropped from SQLite as of 2026-05-16.
+- **Don't query `frs_legacy_uuid` or `frs_legacy_id` for new features.** The base.frs system is being retired. These keys are kept only for one-off historical lookups. New code should treat the WP `user_id` as the canonical identifier.
+- **Don't bypass `BuddyPressXProfileSchema` by writing directly to `wp_bp_xprofile_data`.** Always write to user_meta; the mirror hook propagates the change. Direct xprofile writes skip the dual-write and leave user_meta stale.
+- **Don't assume one user has one member type.** A commercial agent often holds both `sales_associate` and `commercial_agent`. A team lead may hold `staff` and `loan_originator`. Always iterate `bp_get_member_type( $user_id, false )` (the `false` returns the full array).
+- **Don't reset passwords.** Users authenticate via WPO365/Microsoft SSO. Resetting a WP password silently breaks future SSO flows for that account; if access is broken, send the WP lost-password link or fix the Entra account upstream.
+
+## Related artifacts
+
+- [OpenAPI spec](./openapi.yaml) — formal machine-readable definition of every endpoint, parameter, and response schema. Load this into a code generator or schema-aware client.
+- [Swagger UI](./swagger-ui.html) — interactive in-browser docs page backed by the OpenAPI spec. Useful for humans poking at endpoints.
+- [Field map](./api-field-map.md) — original schema/WRITE/READ map showing canonical names, the WordPress location each is persisted to, and the resolver priority for legacy aliases.
+- [Sync code (LocalAggregateSync)](https://github.com/fullrealtyservices/frs-wp-users/blob/main/includes/Integrations/LocalAggregateSync.php) — the WP-CLI sync class that pushes SQLite → prod.
+- [MetaKeyAlias](https://github.com/fullrealtyservices/frs-wp-users/blob/main/includes/Integrations/MetaKeyAlias.php) — the dual-write hook for legacy `frs_*` keys.
+- [BuddyPressXProfileSchema](https://github.com/fullrealtyservices/frs-wp-users/blob/main/includes/Integrations/BuddyPressXProfileSchema.php) — the bidirectional user_meta ↔ xprofile mirror.
+
+## Quick reference: a complete read example
+
+Fetch a single member with all profile fields, using app-password auth:
+
+```
+curl -u "derintolu:xxxx xxxx xxxx xxxx" \
+  "https://myhub21.com/wp-json/buddypress/v1/members/2?populate_extras=true"
+```
+
+Fetch all loan originators in one office:
+
+```
+curl -u "derintolu:xxxx xxxx xxxx xxxx" \
+  "https://myhub21.com/wp-json/buddypress/v1/members?member_type=loan_originator&xprofile[123]=Walnut&per_page=100"
+```
+
+(Replace `123` with the actual `office` xprofile field ID from `GET xprofile/groups`.)

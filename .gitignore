@@ -1,0 +1,27 @@
+# Composer
+/vendor/
+composer.lock
+
+# Build artifacts
+/node_modules/
+/build/
+/dist/
+*.log
+
+# Local IDE / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Tests
+/tests/coverage/
+/.phpunit.result.cache
+
+# Local config (production keys live in wp-config on the host)
+.env
+.env.local
+
+# Editor backup
+*~
+*.bak
