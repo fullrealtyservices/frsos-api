@@ -16,7 +16,7 @@ info:
     ## Naming policy
     - Native WP/BP key when one exists (`description`, `facebook`, `first_name`).
     - Industry-standard names for the rest (`ltm_sales_volume`, `nmls`, `dre_license`).
-    - No `frs_` prefix anywhere.
+    - No branded prefixes — the profile is clean and data portable across systems.
     - Vendor names appear only as link-back metadata (`courted_id`, `modex_id`).
 
     ## Auth
