@@ -121,6 +121,14 @@ class DocsServer {
 		$response->set_status( 200 );
 		add_filter( 'rest_pre_serve_request', function ( $served, $result ) use ( $body, $content_type ) {
 			header( 'Content-Type: ' . $content_type );
+			// No edge or browser caching — the spec/swagger/docs must always
+			// reflect the latest deployed plugin code. Cloudflare-specific
+			// header is what actually defeats CF's HTML caching.
+			header( 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0' );
+			header( 'Pragma: no-cache' );
+			header( 'Expires: 0' );
+			header( 'CDN-Cache-Control: no-store' );
+			header( 'Cloudflare-CDN-Cache-Control: no-store' );
 			echo $body;
 			return true;
 		}, 10, 2 );
