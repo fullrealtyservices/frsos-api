@@ -20,10 +20,10 @@
  * The site itself is a real WP multisite blog; we never duplicate its core
  * metadata (domain, path, blog_id, name) here.
  *
- * @package FRSPapi\Api
+ * @package FRSOS\Api
  */
 
-namespace FRSPapi\Api;
+namespace FRSOS\Api;
 
 defined( 'ABSPATH' ) || exit;
 

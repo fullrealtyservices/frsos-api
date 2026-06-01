@@ -1,9 +1,9 @@
 {
-    "name": "fullrealtyservices/frs-people-and-places-api",
-    "description": "The official REST API for FRS people (agents, loan originators, staff) and places (offices, regions, departments), with sites as a sub-resource. A Backend-For-Frontend projection over WP user_meta + BP xprofile + BP groups + WP multisite, exposed under the frs/v1 namespace.",
+    "name": "fullrealtyservices/frsos-api",
+    "description": "The official REST API for FRS people (agents, loan originators, staff) and places (offices, regions, departments), with sites as a sub-resource. A Backend-For-Frontend projection over WP user_meta + BP xprofile + BP groups + WP multisite, exposed under the frsos/v1 namespace.",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
-    "homepage": "https://github.com/fullrealtyservices/frs-people-and-places-api",
+    "homepage": "https://github.com/fullrealtyservices/frsos-api",
     "keywords": [
         "wordpress",
         "wordpress-plugin",
@@ -13,8 +13,8 @@
         "bff"
     ],
     "support": {
-        "issues": "https://github.com/fullrealtyservices/frs-people-and-places-api/issues",
-        "source": "https://github.com/fullrealtyservices/frs-people-and-places-api"
+        "issues": "https://github.com/fullrealtyservices/frsos-api/issues",
+        "source": "https://github.com/fullrealtyservices/frsos-api"
     },
     "require": {
         "php": ">=7.4"
@@ -25,7 +25,7 @@
     },
     "autoload": {
         "psr-4": {
-            "FRSPapi\\": "includes/"
+            "FRSOS\\": "includes/"
         }
     },
     "scripts": {

@@ -15,10 +15,10 @@
  * the keys you want to change. Nested objects (contact, social, etc.) are
  * supported; flat keys also accepted.
  *
- * @package FRSPapi\Api
+ * @package FRSOS\Api
  */
 
-namespace FRSPapi\Api;
+namespace FRSOS\Api;
 
 defined( 'ABSPATH' ) || exit;
 

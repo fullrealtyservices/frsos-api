@@ -2,10 +2,10 @@
 /**
  * Places endpoints — BP groups projected as offices / regions / departments.
  *
- * @package FRSPapi\Api
+ * @package FRSOS\Api
  */
 
-namespace FRSPapi\Api;
+namespace FRSOS\Api;
 
 defined( 'ABSPATH' ) || exit;
 

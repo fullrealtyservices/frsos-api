@@ -8,10 +8,10 @@
  * Naming policy: native WP/BP key when one exists; industry-standard otherwise;
  * vendor names only as link-back metadata; never `frs_` prefix.
  *
- * @package FRSPapi\Api
+ * @package FRSOS\Api
  */
 
-namespace FRSPapi\Api;
+namespace FRSOS\Api;
 
 defined( 'ABSPATH' ) || exit;
 

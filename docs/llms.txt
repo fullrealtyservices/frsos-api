@@ -1,4 +1,4 @@
-# FRS OS API
+# FRSOS
 
 Real estate agent, loan originator, and staff profile data for Century 21 Realty Masters and Full Realty Services. Backed by WordPress + BuddyPress on a multisite at https://myhub21.com. Data flows from a Google Sheet (canonical roster) + Courted (RE production stats) + Modex (LO production stats CSV) + base.frs (legacy) into WP user_meta + BP xprofile fields, then served via BP REST API.
 

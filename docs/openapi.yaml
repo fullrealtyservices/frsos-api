@@ -1,7 +1,7 @@
 openapi: 3.1.0
 
 info:
-  title: FRS OS API
+  title: FRSOS
   version: 1.0.0
   description: |
     The canonical REST API for People (real estate agents, loan originators,
@@ -73,7 +73,7 @@ components:
       name: X-FRS-Api-Key
       description: |
         Static read-only API key. Issued by the site admin via
-        `wp-config.php` constant `FRS_PAPI_API_KEYS` (comma-separated list).
+        `wp-config.php` constant `FRSOS_API_KEYS` (comma-separated list).
         Write endpoints require WordPress session auth instead.
 
   schemas:
@@ -335,7 +335,7 @@ components:
           items: { $ref: '#/components/schemas/Site' }
 
 paths:
-  /wp-json/frs/v1/people:
+  /wp-json/frsos/v1/people:
     get:
       tags: [People]
       summary: List people
@@ -371,7 +371,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PersonProfile' }
 
-  /wp-json/frs/v1/people/me:
+  /wp-json/frsos/v1/people/me:
     get:
       tags: [People]
       summary: Get authenticated current user
@@ -393,7 +393,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PersonProfile' }
 
-  /wp-json/frs/v1/people/{id}:
+  /wp-json/frsos/v1/people/{id}:
     parameters:
       - { in: path, name: id, required: true, schema: { type: integer } }
     get:
@@ -426,7 +426,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PersonProfile' }
 
-  /wp-json/frs/v1/people/by-login/{login}:
+  /wp-json/frsos/v1/people/by-login/{login}:
     parameters:
       - { in: path, name: login, required: true, schema: { type: string } }
     get:
@@ -439,7 +439,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PersonProfile' }
 
-  /wp-json/frs/v1/people/by-nmls/{nmls}:
+  /wp-json/frsos/v1/people/by-nmls/{nmls}:
     parameters:
       - { in: path, name: nmls, required: true, schema: { type: string } }
     get:
@@ -452,7 +452,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PersonProfile' }
 
-  /wp-json/frs/v1/places:
+  /wp-json/frsos/v1/places:
     get:
       tags: [Places]
       summary: List places
@@ -468,7 +468,7 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/Place' }
 
-  /wp-json/frs/v1/places/{id}:
+  /wp-json/frsos/v1/places/{id}:
     parameters:
       - { in: path, name: id, required: true, schema: { type: integer } }
     get:
@@ -491,7 +491,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Place' }
 
-  /wp-json/frs/v1/places/{id}/people:
+  /wp-json/frsos/v1/places/{id}/people:
     parameters:
       - { in: path, name: id, required: true, schema: { type: integer } }
     get:
@@ -506,7 +506,7 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/PersonProfile' }
 
-  /wp-json/frs/v1/people/{id}/sites:
+  /wp-json/frsos/v1/people/{id}/sites:
     parameters:
       - { in: path, name: id, required: true, schema: { type: integer } }
     post:
@@ -532,7 +532,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Site' }
 
-  /wp-json/frs/v1/places/{id}/sites:
+  /wp-json/frsos/v1/places/{id}/sites:
     parameters:
       - { in: path, name: id, required: true, schema: { type: integer } }
     post:
@@ -546,7 +546,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Site' }
 
-  /wp-json/frs/v1/sites/{blog_id}:
+  /wp-json/frsos/v1/sites/{blog_id}:
     parameters:
       - { in: path, name: blog_id, required: true, schema: { type: integer } }
     patch:
@@ -560,7 +560,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Site' }
 
-  /wp-json/frs/v1/sites/{blog_id}/rebuild:
+  /wp-json/frsos/v1/sites/{blog_id}/rebuild:
     parameters:
       - { in: path, name: blog_id, required: true, schema: { type: integer } }
     post:
@@ -579,7 +579,7 @@ paths:
                   webhook: { type: string, format: uri }
                   reason:  { type: string }
 
-  /wp-json/frs/v1/docs:
+  /wp-json/frsos/v1/docs:
     get:
       tags: [Docs]
       summary: HTML index of docs
@@ -587,7 +587,7 @@ paths:
       responses:
         '200': { description: HTML }
 
-  /wp-json/frs/v1/openapi.yaml:
+  /wp-json/frsos/v1/openapi.yaml:
     get:
       tags: [Docs]
       summary: This file
@@ -595,7 +595,7 @@ paths:
       responses:
         '200': { description: OpenAPI YAML }
 
-  /wp-json/frs/v1/swagger-ui:
+  /wp-json/frsos/v1/swagger-ui:
     get:
       tags: [Docs]
       summary: Interactive Swagger UI
@@ -603,7 +603,7 @@ paths:
       responses:
         '200': { description: HTML }
 
-  /wp-json/frs/v1/llms.txt:
+  /wp-json/frsos/v1/llms.txt:
     get:
       tags: [Docs]
       summary: LLM-optimized API documentation

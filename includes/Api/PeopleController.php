@@ -3,10 +3,10 @@
  * People endpoints. Read-only projection of WP user_meta + BP xprofile + BP
  * group memberships into a single flat AgentProfile shape via Formatter.
  *
- * @package FRSPapi\Api
+ * @package FRSOS\Api
  */
 
-namespace FRSPapi\Api;
+namespace FRSOS\Api;
 
 defined( 'ABSPATH' ) || exit;
 

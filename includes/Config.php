@@ -8,28 +8,28 @@
  *   // Read access: comma-separated list of valid API keys. Any client
  *   // presenting one of these in the `X-FRS-Api-Key` header gets read access.
  *   // Admins (capability `read`) always get read access regardless.
- *   define( 'FRS_PAPI_API_KEYS', 'key-for-mobile-app,key-for-llm-agent,key-for-marketing-site' );
+ *   define( 'FRSOS_API_KEYS', 'key-for-mobile-app,key-for-llm-agent,key-for-marketing-site' );
  *
  *   // Optional throttling (per-IP).
- *   define( 'FRS_PAPI_RATE_LIMIT_PER_MIN', 120 );
+ *   define( 'FRSOS_RATE_LIMIT_PER_MIN', 120 );
  *
  *   // Pagination caps.
- *   define( 'FRS_PAPI_DEFAULT_PER_PAGE', 20 );
- *   define( 'FRS_PAPI_MAX_PER_PAGE',     100 );
+ *   define( 'FRSOS_DEFAULT_PER_PAGE', 20 );
+ *   define( 'FRSOS_MAX_PER_PAGE',     100 );
  *
  *   // Expose /openapi.yaml, /swagger-ui, /llms.txt under the API namespace.
- *   define( 'FRS_PAPI_ENABLE_DOCS', true );
+ *   define( 'FRSOS_ENABLE_DOCS', true );
  *
  *   // Debug.
- *   define( 'FRS_PAPI_LOG_REQUESTS', false );
+ *   define( 'FRSOS_LOG_REQUESTS', false );
  *
  * Write access: NOT key-based. Always requires admin auth (capability
  * `edit_users`). Filter `frs_papi_write_permission` to relax/tighten.
  *
- * @package FRSPapi
+ * @package FRSOS
  */
 
-namespace FRSPapi;
+namespace FRSOS;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -51,7 +51,7 @@ class Config {
 
 	public static function init(): void {
 		foreach ( self::DEFAULTS as $key => $default ) {
-			$const = 'FRS_PAPI_' . strtoupper( $key );
+			$const = 'FRSOS_' . strtoupper( $key );
 			self::$cache[ $key ] = defined( $const ) ? constant( $const ) : $default;
 		}
 	}
