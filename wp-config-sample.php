@@ -60,10 +60,10 @@ define( 'FRSOS_MAX_PER_PAGE', 100 );
 /**
  * Whether to expose the public docs endpoints:
  *
- *   GET /wp-json/frsos/v1/docs         (Swagger UI)
- *   GET /wp-json/frsos/v1/openapi.yaml (OpenAPI 3.1 spec)
- *   GET /wp-json/frsos/v1/swagger-ui   (alias for /docs)
- *   GET /wp-json/frsos/v1/llms.txt     (LLM-friendly endpoint index)
+ *   GET /wp-json/frs/v1/docs         (Swagger UI)
+ *   GET /wp-json/frs/v1/openapi.yaml (OpenAPI 3.1 spec)
+ *   GET /wp-json/frs/v1/swagger-ui   (alias for /docs)
+ *   GET /wp-json/frs/v1/llms.txt     (LLM-friendly endpoint index)
  *
  * Default: true. Set to false to hide the docs in locked-down environments.
  */
@@ -92,7 +92,7 @@ define( 'FRSOS_ENABLE_DOCS', true );
 // -----------------------------------------------------------------------------
 
 /**
- * When true, every request to /wp-json/frsos/v1/* is logged to the PHP error log
+ * When true, every request to /wp-json/frs/v1/* is logged to the PHP error log
  * with timing + auth info. Useful for debugging; noisy in production.
  *
  * Default: false.

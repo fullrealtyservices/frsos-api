@@ -2,10 +2,10 @@
 /**
  * Serves the API documentation at REST routes:
  *
- *   GET /wp-json/frsos/v1/docs           → HTML index linking to swagger-ui and llms.txt
- *   GET /wp-json/frsos/v1/openapi.yaml   → the OpenAPI spec
- *   GET /wp-json/frsos/v1/swagger-ui     → interactive Swagger UI page
- *   GET /wp-json/frsos/v1/llms.txt       → LLM-optimized API docs
+ *   GET /wp-json/frs/v1/docs           → HTML index linking to swagger-ui and llms.txt
+ *   GET /wp-json/frs/v1/openapi.yaml   → the OpenAPI spec
+ *   GET /wp-json/frs/v1/swagger-ui     → interactive Swagger UI page
+ *   GET /wp-json/frs/v1/llms.txt       → LLM-optimized API docs
  *
  * All four are public (no auth) so anyone can discover the API. Disable via
  * `define( 'FRSOS_ENABLE_DOCS', false );` in wp-config.
@@ -85,7 +85,7 @@ class DocsServer {
 
 	public static function serve_swagger_ui() {
 		// We rewrite the in-file `./openapi.yaml` URL to the actual REST endpoint
-		// so the Swagger UI loads from `/wp-json/frsos/v1/openapi.yaml`.
+		// so the Swagger UI loads from `/wp-json/frs/v1/openapi.yaml`.
 		$path = FRSOS_DOCS_DIR . 'swagger-ui.html';
 		if ( ! file_exists( $path ) ) {
 			return new \WP_Error( 'frs_papi_docs_missing', 'swagger-ui.html not shipped with plugin.', [ 'status' => 500 ] );

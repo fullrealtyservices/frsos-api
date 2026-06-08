@@ -1,6 +1,6 @@
 # FRSOS
 
-The official REST API for FRS people (real estate agents, loan originators, staff) and places (offices, regions, departments), with sites as a sub-resource owned by people or places. This plugin is a Backend-For-Frontend (BFF) projection that unifies WordPress users, BuddyPress xprofile, BuddyPress groups, and WP multisite blogs into a single, consistent REST surface under the `frsos/v1` namespace.
+The official REST API for FRS people (real estate agents, loan originators, staff) and places (offices, regions, departments), with sites as a sub-resource owned by people or places. This plugin is a Backend-For-Frontend (BFF) projection that unifies WordPress users, BuddyPress xprofile, BuddyPress groups, and WP multisite blogs into a single, consistent REST surface under the `frs/v1` namespace.
 
 Consumers — mobile apps, LLM agents, marketing sites, internal tooling — call **one** API. They never need to know that a "person" is assembled from `wp_users` + `wp_usermeta` + xprofile tables, or that a "place" is a BP group, or that a "site" is a multisite blog. The plugin owns that mapping.
 
@@ -14,7 +14,7 @@ Consumers — mobile apps, LLM agents, marketing sites, internal tooling — cal
 
 Optionally, copy `mu-plugin-loader/frsos-loader.php` into `wp-content/mu-plugins/` to force-load the plugin even if a sub-site admin tries to deactivate it.
 
-Once activated, hit `https://your-domain.com/wp-json/frsos/v1/docs` to see the live Swagger UI.
+Once activated, hit `https://your-domain.com/wp-json/frs/v1/docs` to see the live Swagger UI.
 
 ---
 
@@ -76,7 +76,7 @@ The API has two distinct auth modes: **read** and **write**.
 All `GET` requests require an API key passed in the `X-FRS-Api-Key` header. Keys are configured in `wp-config.php` via the `FRSOS_API_KEYS` constant (comma-separated). Logged-in WordPress administrators always have read access regardless of API key.
 
 ```bash
-curl https://myhub21.com/wp-json/frsos/v1/people/123 \
+curl https://myhub21.com/wp-json/frs/v1/people/123 \
   -H "X-FRS-Api-Key: key-for-mobile-app"
 ```
 
@@ -85,7 +85,7 @@ curl https://myhub21.com/wp-json/frsos/v1/people/123 \
 All `POST` and `PATCH` requests require a logged-in WordPress user with the `edit_users` capability. Use standard WP cookie auth (for browser clients) or application passwords (for server-to-server). API keys alone never grant write access.
 
 ```bash
-curl -X PATCH https://myhub21.com/wp-json/frsos/v1/people/123 \
+curl -X PATCH https://myhub21.com/wp-json/frs/v1/people/123 \
   -u admin:application-password \
   -H "Content-Type: application/json" \
   -d '{"phone": "+1-555-0100"}'
@@ -221,7 +221,7 @@ wp plugin activate frsos-api --network
 echo "define( 'FRSOS_API_KEYS', 'dev-key' );" >> wp-config.php
 
 # Hit the docs
-open https://your-local-site.test/wp-json/frsos/v1/docs
+open https://your-local-site.test/wp-json/frs/v1/docs
 ```
 
 The plugin ships a manual `spl_autoload_register` for the `FRSOS\` namespace, so **no `composer install` is needed at runtime**. `composer.json` is provided for IDE integration and dev dependencies (PHPCS, PHPUnit) only.
@@ -230,7 +230,7 @@ The plugin ships a manual `spl_autoload_register` for the `FRSOS\` namespace, so
 
 ## Versioning
 
-This API follows [Semantic Versioning](https://semver.org/). The URL namespace (`frsos/v1`) is stable across the 1.x line — new fields and endpoints may be added without bumping the major, but existing field semantics will not change.
+This API follows [Semantic Versioning](https://semver.org/). The URL namespace (`frs/v1`) is stable across the 1.x line — new fields and endpoints may be added without bumping the major, but existing field semantics will not change.
 
 ### Changelog
 
@@ -248,8 +248,8 @@ GPLv2 or later — see [LICENSE](./LICENSE).
 
 Once installed, the canonical docs live at:
 
-- **Swagger UI:** `/wp-json/frsos/v1/docs`
-- **OpenAPI spec:** `/wp-json/frsos/v1/openapi.yaml`
-- **LLM index:** `/wp-json/frsos/v1/llms.txt`
+- **Swagger UI:** `/wp-json/frs/v1/docs`
+- **OpenAPI spec:** `/wp-json/frs/v1/openapi.yaml`
+- **LLM index:** `/wp-json/frs/v1/llms.txt`
 
 These are always in sync with the deployed code — this README is just an overview.

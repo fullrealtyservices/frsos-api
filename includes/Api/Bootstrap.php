@@ -2,18 +2,18 @@
 /**
  * REST routes registration.
  *
- *   GET  /wp-json/frsos/v1/people                       list (filter: member_type, office, region, search, page, per_page, fields)
- *   GET  /wp-json/frsos/v1/people/me                    authenticated current user
- *   GET  /wp-json/frsos/v1/people/{id}                  by wp_user_id
- *   GET  /wp-json/frsos/v1/people/by-login/{login}      by user_login OR user_nicename
- *   GET  /wp-json/frsos/v1/people/by-nmls/{nmls}        by NMLS id
+ *   GET  /wp-json/frs/v1/people                       list (filter: member_type, office, region, search, page, per_page, fields)
+ *   GET  /wp-json/frs/v1/people/me                    authenticated current user
+ *   GET  /wp-json/frs/v1/people/{id}                  by wp_user_id
+ *   GET  /wp-json/frs/v1/people/by-login/{login}      by user_login OR user_nicename
+ *   GET  /wp-json/frs/v1/people/by-nmls/{nmls}        by NMLS id
  *
- *   GET  /wp-json/frsos/v1/places                       list (filter: type, parent)
- *   GET  /wp-json/frsos/v1/places/{id}                  single
- *   GET  /wp-json/frsos/v1/places/{id}/people           members of a place
+ *   GET  /wp-json/frs/v1/places                       list (filter: type, parent)
+ *   GET  /wp-json/frs/v1/places/{id}                  single
+ *   GET  /wp-json/frs/v1/places/{id}/people           members of a place
  *
  * Docs (when FRSOS_ENABLE_DOCS is true) are registered by Docs\DocsServer
- * at /wp-json/frsos/v1/docs, /openapi.yaml, /swagger-ui, /llms.txt.
+ * at /wp-json/frs/v1/docs, /openapi.yaml, /swagger-ui, /llms.txt.
  *
  * @package FRSOS\Api
  */
@@ -26,7 +26,7 @@ defined( 'ABSPATH' ) || exit;
 
 class Bootstrap {
 
-	const NAMESPACE_V1 = 'frsos/v1';
+	const NAMESPACE_V1 = 'frs/v1';
 
 	public static function init(): void {
 		add_action( 'rest_api_init', [ __CLASS__, 'register_routes' ] );
