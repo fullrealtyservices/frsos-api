@@ -143,6 +143,22 @@ class Bootstrap {
 			'callback'            => [ WriteController::class, 'trigger_site_rebuild' ],
 			'permission_callback' => $write,
 		] );
+
+		// ---- Ingest (internal, HMAC-only — n8n -> WP) ----
+		$ingest = [ IngestController::class, 'permission_ingest' ];
+		register_rest_route( self::NAMESPACE_V1, '/ingest/darwin/agents', [
+			'methods'             => 'POST',
+			'callback'            => [ IngestController::class, 'ingest_agents' ],
+			'permission_callback' => $ingest,
+		] );
+		register_rest_route( self::NAMESPACE_V1, '/sync/darwin/cursor', [
+			'methods'             => 'GET',
+			'callback'            => [ IngestController::class, 'cursor' ],
+			'permission_callback' => $ingest,
+			'args'                => [
+				'domain' => [ 'type' => 'string', 'required' => false, 'enum' => [ 'agents', 'listings' ] ],
+			],
+		] );
 	}
 
 	/**

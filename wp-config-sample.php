@@ -88,6 +88,26 @@ define( 'FRSOS_ENABLE_DOCS', true );
 // define( 'FRSOS_WEBHOOK_SECRET', 'rotate-me-quarterly' );
 
 // -----------------------------------------------------------------------------
+// OPTIONAL — Darwin ingest (n8n -> WP)
+// -----------------------------------------------------------------------------
+
+/**
+ * Shared HMAC secret for the internal Darwin ingest endpoints:
+ *
+ *   POST /wp-json/frs/v1/ingest/darwin/agents
+ *   POST /wp-json/frs/v1/ingest/darwin/listings
+ *   GET  /wp-json/frs/v1/sync/darwin/cursor
+ *
+ * n8n signs each request:
+ *   X-FRS-Webhook-Timestamp: <unix seconds>
+ *   X-FRS-Webhook-Signature: hash_hmac('sha256', "{timestamp}.{rawBody}", secret)
+ *
+ * Leave undefined (or empty) to DISABLE ingest entirely — every /ingest/* call
+ * is rejected until this is set.
+ */
+// define( 'FRSOS_DARWIN_INGEST_SECRET', 'rotate-me-and-store-in-n8n-credentials' );
+
+// -----------------------------------------------------------------------------
 // OPTIONAL — Debug logging
 // -----------------------------------------------------------------------------
 

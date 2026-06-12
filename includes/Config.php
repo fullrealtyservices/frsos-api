@@ -41,12 +41,13 @@ class Config {
 	private static $cache = [];
 
 	const DEFAULTS = [
-		'api_keys'           => '',     // CSV of valid read keys
-		'rate_limit_per_min' => 120,
-		'default_per_page'   => 20,
-		'max_per_page'       => 100,
-		'enable_docs'        => true,
-		'log_requests'       => false,
+		'api_keys'             => '',     // CSV of valid read keys
+		'rate_limit_per_min'   => 120,
+		'default_per_page'     => 20,
+		'max_per_page'         => 100,
+		'enable_docs'          => true,
+		'log_requests'         => false,
+		'darwin_ingest_secret' => '',     // HMAC shared secret for n8n -> /ingest/darwin/*
 	];
 
 	public static function init(): void {
@@ -74,6 +75,11 @@ class Config {
 
 	public static function rate_limit_per_min(): int {
 		return max( 0, (int) self::get( 'rate_limit_per_min' ) );
+	}
+
+	/** Shared HMAC secret for the n8n -> /ingest/darwin/* path. Empty = ingest disabled. */
+	public static function darwin_ingest_secret(): string {
+		return (string) self::get( 'darwin_ingest_secret', '' );
 	}
 
 	/**
