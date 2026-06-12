@@ -39,6 +39,7 @@ spl_autoload_register( function ( $class ) {
 // Boot.
 add_action( 'plugins_loaded', function () {
 	\FRSOS\Config::init();
+	\FRSOS\Database\Migrations::maybe_upgrade();
 	\FRSOS\Api\Bootstrap::init();
 	\FRSOS\Docs\DocsServer::init();
 }, 5 );
@@ -57,4 +58,7 @@ register_activation_hook( __FILE__, function ( $network_wide ) {
 			[ 'back_link' => true ]
 		);
 	}
+
+	// Create the canonical Darwin mirror tables (raw buffer, agents, listings).
+	\FRSOS\Database\Migrations::run();
 } );
