@@ -99,6 +99,7 @@ class Listings implements SchemaInterface {
 			list_agent_darwin_id VARCHAR(64) NULL,
 			list_agent_user_id BIGINT UNSIGNED NULL,
 			office_darwin_id VARCHAR(64) NULL,
+			office_group_id BIGINT UNSIGNED NULL,
 			company_id VARCHAR(64) NULL,
 
 			photos_json LONGTEXT NULL,
@@ -115,6 +116,7 @@ class Listings implements SchemaInterface {
 			KEY city_state (city, state),
 			KEY list_agent_user_id (list_agent_user_id),
 			KEY office_darwin_id (office_darwin_id),
+			KEY office_group_id (office_group_id),
 			KEY list_price (list_price_cents),
 			KEY vendor_updated_at (vendor_updated_at),
 			KEY geocode_status (geocode_status)

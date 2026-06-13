@@ -20,6 +20,7 @@ namespace FRSOS\Database;
 
 use FRSOS\Database\Schema\RawBufferDarwin;
 use FRSOS\Database\Schema\Agents;
+use FRSOS\Database\Schema\Offices;
 use FRSOS\Database\Schema\Listings;
 
 defined( 'ABSPATH' ) || exit;
@@ -38,6 +39,7 @@ class Migrations {
 		return [
 			RawBufferDarwin::class,
 			Agents::class,
+			Offices::class,
 			Listings::class,
 		];
 	}

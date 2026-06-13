@@ -100,6 +100,64 @@ class Bootstrap {
 			],
 		] );
 
+		// ---- Listings (Darwin-sourced canonical mirror) ----
+		register_rest_route( self::NAMESPACE_V1, '/listings', [
+			'methods'             => 'GET',
+			'callback'            => [ ListingsController::class, 'list' ],
+			'permission_callback' => $read,
+			'args'                => [
+				'status_code'   => [ 'type' => 'string',  'required' => false, 'description' => 'AC active, CL closed, CA cancelled, ... (default: on-market only)' ],
+				'all'           => [ 'type' => 'boolean', 'required' => false, 'description' => 'Include non-on-market listings.' ],
+				'city'          => [ 'type' => 'string',  'required' => false ],
+				'state'         => [ 'type' => 'string',  'required' => false ],
+				'zip'           => [ 'type' => 'string',  'required' => false ],
+				'agent'         => [ 'type' => 'integer', 'required' => false, 'description' => 'list_agent_user_id (WP user).' ],
+				'office'        => [ 'type' => 'integer', 'required' => false, 'description' => 'office_group_id (BP group).' ],
+				'property_type' => [ 'type' => 'string',  'required' => false ],
+				'min_price'     => [ 'type' => 'integer', 'required' => false ],
+				'max_price'     => [ 'type' => 'integer', 'required' => false ],
+				'min_beds'      => [ 'type' => 'integer', 'required' => false ],
+				'max_beds'      => [ 'type' => 'integer', 'required' => false ],
+				'min_baths'     => [ 'type' => 'integer', 'required' => false ],
+				'min_sqft'      => [ 'type' => 'integer', 'required' => false ],
+				'max_sqft'      => [ 'type' => 'integer', 'required' => false ],
+				'north'         => [ 'type' => 'number',  'required' => false ],
+				'south'         => [ 'type' => 'number',  'required' => false ],
+				'east'          => [ 'type' => 'number',  'required' => false ],
+				'west'          => [ 'type' => 'number',  'required' => false ],
+				'q'             => [ 'type' => 'string',  'required' => false ],
+				'sort'          => [ 'type' => 'string',  'required' => false, 'enum' => [ 'newest', 'oldest', 'price_desc', 'price_asc', 'beds_desc', 'sqft_desc' ] ],
+				'page'          => [ 'type' => 'integer', 'default' => 1, 'minimum' => 1 ],
+				'per_page'      => [ 'type' => 'integer', 'default' => $default_per_page, 'minimum' => 1, 'maximum' => $max_per_page ],
+			],
+		] );
+		register_rest_route( self::NAMESPACE_V1, '/listings/(?P<id>\d+)', [
+			'methods'             => 'GET',
+			'callback'            => [ ListingsController::class, 'get' ],
+			'permission_callback' => $read,
+			'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
+		] );
+		register_rest_route( self::NAMESPACE_V1, '/people/(?P<id>\d+)/listings', [
+			'methods'             => 'GET',
+			'callback'            => [ ListingsController::class, 'for_person' ],
+			'permission_callback' => $read,
+			'args'                => [
+				'all'      => [ 'type' => 'boolean', 'required' => false ],
+				'page'     => [ 'type' => 'integer', 'default' => 1, 'minimum' => 1 ],
+				'per_page' => [ 'type' => 'integer', 'default' => $default_per_page, 'minimum' => 1, 'maximum' => $max_per_page ],
+			],
+		] );
+		register_rest_route( self::NAMESPACE_V1, '/places/(?P<id>\d+)/listings', [
+			'methods'             => 'GET',
+			'callback'            => [ ListingsController::class, 'for_place' ],
+			'permission_callback' => $read,
+			'args'                => [
+				'all'      => [ 'type' => 'boolean', 'required' => false ],
+				'page'     => [ 'type' => 'integer', 'default' => 1, 'minimum' => 1 ],
+				'per_page' => [ 'type' => 'integer', 'default' => $default_per_page, 'minimum' => 1, 'maximum' => $max_per_page ],
+			],
+		] );
+
 		// ---- Write endpoints (admin auth required) ----
 		register_rest_route( self::NAMESPACE_V1, '/people', [
 			'methods'             => 'POST',
@@ -149,6 +207,11 @@ class Bootstrap {
 		register_rest_route( self::NAMESPACE_V1, '/ingest/darwin/agents', [
 			'methods'             => 'POST',
 			'callback'            => [ IngestController::class, 'ingest_agents' ],
+			'permission_callback' => $ingest,
+		] );
+		register_rest_route( self::NAMESPACE_V1, '/ingest/darwin/listings', [
+			'methods'             => 'POST',
+			'callback'            => [ IngestController::class, 'ingest_listings' ],
 			'permission_callback' => $ingest,
 		] );
 		register_rest_route( self::NAMESPACE_V1, '/sync/darwin/cursor', [

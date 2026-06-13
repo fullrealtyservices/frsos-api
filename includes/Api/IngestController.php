@@ -22,8 +22,12 @@ namespace FRSOS\Api;
 use FRSOS\Config;
 use FRSOS\Ingest\RawBuffer;
 use FRSOS\Ingest\DarwinAgentNormalizer;
+use FRSOS\Ingest\DarwinListingNormalizer;
 use FRSOS\Database\AgentsRepository;
+use FRSOS\Database\ListingsRepository;
 use FRSOS\Services\AgentProvisioner;
+use FRSOS\Services\OfficeProjector;
+use FRSOS\Services\BpPlacement;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -87,6 +91,23 @@ class IngestController {
 				$prov  = AgentProvisioner::provision( $normalized );
 				AgentsRepository::set_user( $agent['agent_id'], $prov['user_id'], $prov['provision_status'] );
 
+				// Place the user into the existing BP structure: resolve the
+				// Darwin office -> BP office group (region = its parent), then
+				// add memberships + member type.
+				if ( $prov['user_id'] && ! empty( $normalized['office_darwin_id'] ) ) {
+					$office = OfficeProjector::resolve( [
+						'vendor_record_id'   => $normalized['office_darwin_id'],
+						'office_name'        => $normalized['office_name'] ?? null,
+						'company_id'         => $normalized['company_id'] ?? null,
+					], $raw['raw_id'] );
+					BpPlacement::place_agent(
+						(int) $prov['user_id'],
+						$office['group_id'],
+						$office['region_group_id'],
+						(string) ( $normalized['person_type'] ?? 'agent' )
+					);
+				}
+
 				if ( isset( $counts[ $prov['provision_status'] ] ) ) {
 					$counts[ $prov['provision_status'] ]++;
 				}
@@ -102,6 +123,57 @@ class IngestController {
 
 		if ( null !== $hwm ) {
 			self::advance_cursor( 'agents', $hwm );
+		}
+
+		$counts['request_id'] = $request_id;
+		return rest_ensure_response( $counts );
+	}
+
+	/** POST /ingest/darwin/listings */
+	public static function ingest_listings( $request ) {
+		$batch      = self::batch( $request );
+		$request_id = self::str( $request->get_param( 'request_id' ) );
+		if ( null === $batch ) {
+			return new \WP_Error( 'frs_papi_bad_batch', 'Body must be { request_id, batch:[...] } (max ' . self::MAX_BATCH . ').', [ 'status' => 422 ] );
+		}
+
+		$counts = [ 'received' => 0, 'deduped' => 0, 'created' => 0, 'updated' => 0, 'errors' => 0 ];
+		$hwm    = null;
+
+		foreach ( $batch as $payload ) {
+			$counts['received']++;
+			if ( ! is_array( $payload ) ) {
+				$counts['errors']++;
+				continue;
+			}
+
+			$normalized = DarwinListingNormalizer::normalize( $payload );
+			if ( null === $normalized ) {
+				$counts['errors']++;
+				continue;
+			}
+
+			$raw = RawBuffer::store( '/api/property', $normalized['vendor_record_id'], $payload, $request_id );
+			if ( $raw['deduped'] ) {
+				$counts['deduped']++;
+				continue;
+			}
+
+			try {
+				$res = ListingsRepository::upsert( $normalized, $raw['raw_id'] );
+				$counts[ $res['created'] ? 'created' : 'updated' ]++;
+				if ( ! empty( $normalized['vendor_updated_at'] ) && ( null === $hwm || $normalized['vendor_updated_at'] > $hwm ) ) {
+					$hwm = $normalized['vendor_updated_at'];
+				}
+				RawBuffer::mark( $raw['raw_id'], 'ok' );
+			} catch ( \Throwable $e ) {
+				$counts['errors']++;
+				RawBuffer::mark( $raw['raw_id'], 'failed', $e->getMessage() );
+			}
+		}
+
+		if ( null !== $hwm ) {
+			self::advance_cursor( 'listings', $hwm );
 		}
 
 		$counts['request_id'] = $request_id;
