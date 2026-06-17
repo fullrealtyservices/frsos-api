@@ -107,6 +107,30 @@ define( 'FRSOS_ENABLE_DOCS', true );
  */
 // define( 'FRSOS_DARWIN_INGEST_SECRET', 'rotate-me-and-store-in-n8n-credentials' );
 
+/**
+ * Darwin API credentials for the in-process WP-CLI sync (`wp frsos darwin
+ * sync-listings`). Two ways to auth:
+ *
+ *  A) Login flow (preferred — independent token, no n8n refresh-chain coupling):
+ */
+// define( 'FRSOS_DARWIN_USERNAME',      'C21FullRSAPI' );
+// define( 'FRSOS_DARWIN_CLIENT_ID',     '...' );
+// define( 'FRSOS_DARWIN_CLIENT_SECRET', '...' );
+// define( 'FRSOS_DARWIN_API_KEY',       '...' );
+// define( 'FRSOS_DARWIN_PASSWORD',      '...' );
+/**
+ *  B) Refresh-token flow (single-use, base64; will desync n8n if shared):
+ */
+// define( 'FRSOS_DARWIN_REFRESH_TOKEN', '<base64-refresh-token>' );
+/**
+ * Or skip both and pass a live token on the CLI:
+ *   wp frsos darwin sync-listings --token=<token> --username=C21FullRSAPI --geocode
+ *
+ * Optional self-hosted/Google geocoder override (defaults to OSM Nominatim):
+ */
+// define( 'FRSOS_GEOCODER_URL',   'https://nominatim.example.com/search' );
+// define( 'FRSOS_GEOCODER_EMAIL', 'ops@fullrealtyservices.com' );
+
 // -----------------------------------------------------------------------------
 // OPTIONAL — Debug logging
 // -----------------------------------------------------------------------------

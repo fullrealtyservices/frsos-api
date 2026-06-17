@@ -44,6 +44,11 @@ add_action( 'plugins_loaded', function () {
 	\FRSOS\Docs\DocsServer::init();
 }, 5 );
 
+// WP-CLI: `wp frsos darwin <sync-listings|geocode|status>`.
+if ( defined( 'WP_CLI' ) && WP_CLI ) {
+	\WP_CLI::add_command( 'frsos darwin', \FRSOS\CLI\DarwinCommand::class );
+}
+
 /**
  * Network-only activation guard. This plugin is meaningless on a single
  * subsite — it must be network-activated so REST routes exist for every site

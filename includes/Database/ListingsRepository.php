@@ -83,6 +83,29 @@ class ListingsRepository {
 		return [ 'listing_id' => (int) $wpdb->insert_id, 'created' => true ];
 	}
 
+	/** Store geocoded coordinates for a listing. */
+	public static function set_geocode( int $listing_id, ?float $lat, ?float $lng, string $status ): void {
+		global $wpdb;
+		$wpdb->update(
+			Listings::table_name(),
+			[ 'latitude' => $lat, 'longitude' => $lng, 'geocode_status' => $status ],
+			[ 'id' => $listing_id ],
+			[ '%f', '%f', '%s' ],
+			[ '%d' ]
+		);
+	}
+
+	/** Listings needing geocoding (no coords yet, not already failed). */
+	public static function needing_geocode( int $limit = 200 ): array {
+		global $wpdb;
+		$table = Listings::table_name();
+		return $wpdb->get_results( $wpdb->prepare(
+			"SELECT id, address, city, state, zip FROM {$table}
+			  WHERE latitude IS NULL AND geocode_status IN ('pending','') LIMIT %d",
+			$limit
+		), ARRAY_A ) ?: [];
+	}
+
 	/** Drop any non-column helper keys (e.g. _office_name) before write. */
 	private static function only_columns( array $row ): array {
 		return array_intersect_key( $row, array_flip( self::COLUMNS ) );
